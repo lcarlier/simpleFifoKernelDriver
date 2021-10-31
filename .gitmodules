@@ -1,0 +1,3 @@
+[submodule "extern/EasyMock"]
+	path = extern/EasyMock
+	url = https://github.com/lcarlier/EasyMock

@@ -1,0 +1,49 @@
+name: Validate kernel module
+
+on: [push, pull_request]
+
+jobs:
+  validate-kernel-module:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run test
+        run:  |-
+          sudo apt install \
+            gcc \
+            g++ \
+            cmake \
+            pkg-config \
+            libunwind-dev \
+            llvm-12-dev \
+            libclang-12-dev \
+            libncurses-dev \
+            libboost-system-dev \
+            libboost-filesystem-dev \
+            libctemplate-dev \
+            libdw-dev \
+            doxygen \
+            graphviz
+          git submodule init
+          git submodule update
+          cmake -B build
+          cd build
+          make -j`nproc` all
+          ctest --output-on-failure
+        shell: bash
+
+      - name: Store artifacts
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-output
+          path: |
+            **/*.c
+            **/*.cpp
+            **/*.h
+            **/*.hpp
+            **/*.txt
+            **/Kbuild
+
