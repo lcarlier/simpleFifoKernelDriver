@@ -3,16 +3,24 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/device.h>
+#include <linux/types.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Laurent Carlier <carlier.lau@gmail.com>");
 
+static int simple_fifo_open(struct inode* inode, struct file* file);
+
 static const struct file_operations simpleFifo_fops = {
-        .owner      = THIS_MODULE
+        .owner      = THIS_MODULE,
+        .open = &simple_fifo_open
 };
+
+#define MAX_FIFO_SIZE 64
 
 struct simpleFifo_device_data {
     struct cdev cdev;
+    uint8_t data[MAX_FIFO_SIZE];
+    uint8_t size;
 };
 
 static int dev_major;
@@ -62,6 +70,15 @@ cdev_del:
 unregister_chrdev_region:
     unregister_chrdev_region(MKDEV(dev_major, 0), MINORMASK);
     return 1;
+}
+
+static int simple_fifo_open(struct inode* inode, struct file* file)
+{
+    struct simpleFifo_device_data *data = container_of(inode->i_cdev, struct simpleFifo_device_data, cdev);
+
+    file->private_data = (void*)data;
+
+    return 0;
 }
 
 static void __exit simple_fifo_exit(void)

@@ -12,6 +12,8 @@ extern "C"
     int test_init_module_cdev_add_fail();
     int test_init_module_device_create_fail();
 
+    int test_simple_fifo_open();
+
     int test_exit_module();
 
 #ifdef __cplusplus

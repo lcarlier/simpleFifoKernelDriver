@@ -50,6 +50,16 @@ TEST_CASE("init module", "[init_module]")
     check_easyMock();
 }
 
+TEST_CASE("open file", "[open]")
+{
+    initialise_easyMock();
+    SECTION("Open simple fifo")
+    {
+        CHECK(test_simple_fifo_open() == 0);
+    }
+    check_easyMock();
+}
+
 
 TEST_CASE("module exit", "[module_exit]")
 {

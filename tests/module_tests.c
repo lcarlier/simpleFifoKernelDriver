@@ -4,6 +4,12 @@
 #define __exit
 static struct module{} __this_module;
 #define THIS_MODULE (&__this_module)
+/*
+ * Including stdint before include simpleFifo.c makes sure that stdint types like uint8_t are available in
+ * simpleFifo.c. Normally, those types are coming from the linux kernel include linux/types.h but mocking
+ * this files will not generate the stdint types because no function parameter or return type is actually using those.
+ */
+#include <stdint.h>
 #include "../simpleFifoModule/simpleFifo.c"
 
 #include <easyMock.h>
@@ -88,7 +94,7 @@ int test_init_module_no_errors()
         int rv = simple_fifo_init();
 
         if (rv != 0) {
-            fprintf(stderr, "simple_fifo_init didn't return 0\n");
+            easyMock_addError(easyMock_false, "simple_fifo_init didn't return 0");
             return 1;
         }
     }
@@ -109,7 +115,7 @@ int test_init_module_alloc_chrdev_region_fail()
         int rv = simple_fifo_init();
 
         if (rv == 0) {
-            fprintf(stderr, "simple_fifo_init didn't return an error\n");
+            easyMock_addError(easyMock_false, "simple_fifo_init didn't return an error");
             return 1;
         }
     }
@@ -133,7 +139,7 @@ int test_init_module_class_create_fail()
     {
         int rv = simple_fifo_init();
         if (rv == 0) {
-            fprintf(stderr, "simple_fifo_init didn't return an error\n");
+            easyMock_addError(easyMock_false, "simple_fifo_init didn't return an error");
             return 1;
         }
     }
@@ -166,7 +172,7 @@ int test_init_module_cdev_add_fail()
     {
         int rv = simple_fifo_init();
         if (rv == 0) {
-            fprintf(stderr, "simple_fifo_init didn't return an error\n");
+            easyMock_addError(easyMock_false, "simple_fifo_init didn't return an error");
             return 1;
         }
     }
@@ -201,9 +207,28 @@ int test_init_module_device_create_fail()
     {
         int rv = simple_fifo_init();
         if (rv == 0) {
-            fprintf(stderr, "simple_fifo_init didn't return an error\n");
+            easyMock_addError(easyMock_false, "simple_fifo_init didn't return an error");
             return 1;
         }
+    }
+    return 0;
+}
+
+int test_simple_fifo_open()
+{
+    struct inode inode;
+    struct file file;
+    struct simpleFifo_device_data data;
+    inode.i_cdev = &data.cdev;
+
+    int rv = simple_fifo_open(&inode, &file);
+    if(rv != 0)
+    {
+        easyMock_addError(easyMock_false, "simple_fifo_open didn't return 0");
+    }
+    if(file.private_data != &data)
+    {
+        easyMock_addError(easyMock_false, "simple_fifo_open didn't set file.private_data correctly. Expected: %p, got: %p", &data, file.private_data);
     }
     return 0;
 }

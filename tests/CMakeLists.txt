@@ -61,12 +61,21 @@ add_custom_command(OUTPUT easyMock_device.c linux/device.h
         EasyMockGenerate
         )
 
+add_custom_command(OUTPUT easyMock_types.c linux/types.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/types.h --generate-attribute format ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_types.h linux/types.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/types.h
+        EasyMockGenerate
+        )
+
 add_executable(testKernel
         easyMock_cdev.c
         easyMock_module.c
         easyMock_kernel.c
         easyMock_fs.c
         easyMock_device.c
+        easyMock_types.c
         module_tests.c
         main.cpp
         )
