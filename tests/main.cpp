@@ -23,50 +23,87 @@ namespace
     }
 }
 
-TEST_CASE("init module", "[init_module]")
+TEST_CASE("Init module", "[init_module]")
 {
     initialise_easyMock();
     SECTION("Module init no error")
     {
         CHECK(test_init_module_no_errors() == 0);
+        check_easyMock();
     }
     SECTION("alloc_chrdev_region fails")
     {
         CHECK(test_init_module_alloc_chrdev_region_fail() == 0);
+        check_easyMock();
     }
     SECTION("lass_create fails")
     {
         CHECK(test_init_module_class_create_fail() == 0);
+        check_easyMock();
     }
     SECTION("cdev_add fails")
     {
         CHECK(test_init_module_cdev_add_fail() == 0);
+        check_easyMock();
     }
     SECTION("device_create fails")
     {
         CHECK(test_init_module_device_create_fail() == 0);
-
+        check_easyMock();
     }
-    check_easyMock();
 }
 
-TEST_CASE("open file", "[open]")
+TEST_CASE("Open file", "[open]")
 {
     initialise_easyMock();
     SECTION("Open simple fifo")
     {
         CHECK(test_simple_fifo_open() == 0);
+        check_easyMock();
     }
-    check_easyMock();
 }
 
+TEST_CASE("Write file", "[write]")
+{
+    initialise_easyMock();
+    SECTION("Simple write")
+    {
+        CHECK(test_simple_fifo_write_simple_write() == 0);
+        check_easyMock();
+    }
+    SECTION("Wrapper write")
+    {
+        CHECK(test_simple_fifo_write_wrapper_write() == 0);
+        check_easyMock();
+    }
+    SECTION("Double write")
+    {
+        CHECK(test_simple_fifo_write_double_write() == 0);
+        check_easyMock();
+    }
+    SECTION("Write fails")
+    {
+        CHECK(test_simple_fifo_write_copy_from_user_fails() == 0);
+        check_easyMock();
+    }
+    SECTION("Fifo full")
+    {
+        CHECK(test_simple_fifo_write_fifo_full() == 0);
+        check_easyMock();
+    }
+    SECTION("Partial write")
+    {
+        CHECK(test_simple_fifo_write_fifo_partial_write() == 0);
+        check_easyMock();
+    }
+}
 
-TEST_CASE("module exit", "[module_exit]")
+TEST_CASE("Exit module", "[exit_module]")
 {
     initialise_easyMock();
     SECTION("module exit OK")
     {
-        REQUIRE(test_exit_module() == 0);
+        CHECK(test_exit_module() == 0);
+        check_easyMock();
     }
-    check_easyMock();
 }

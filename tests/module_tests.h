@@ -14,6 +14,13 @@ extern "C"
 
     int test_simple_fifo_open();
 
+    int test_simple_fifo_write_simple_write();
+    int test_simple_fifo_write_wrapper_write();
+    int test_simple_fifo_write_double_write();
+    int test_simple_fifo_write_copy_from_user_fails();
+    int test_simple_fifo_write_fifo_full();
+    int test_simple_fifo_write_fifo_partial_write();
+
     int test_exit_module();
 
 #ifdef __cplusplus

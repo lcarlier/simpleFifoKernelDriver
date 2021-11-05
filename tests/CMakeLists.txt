@@ -69,6 +69,14 @@ add_custom_command(OUTPUT easyMock_types.c linux/types.h
         EasyMockGenerate
         )
 
+add_custom_command(OUTPUT easyMock_uaccess.c linux/uaccess.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/uaccess.h --mock-only copy_from_user --mock-only copy_to_user --generate-attribute format ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_uaccess.h linux/uaccess.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/uaccess.h
+        EasyMockGenerate
+        )
+
 add_executable(testKernel
         easyMock_cdev.c
         easyMock_module.c
@@ -76,6 +84,7 @@ add_executable(testKernel
         easyMock_fs.c
         easyMock_device.c
         easyMock_types.c
+        easyMock_uaccess.c
         module_tests.c
         main.cpp
         )
