@@ -98,6 +98,41 @@ TEST_CASE("Write file", "[write]")
     }
 }
 
+TEST_CASE("Read file", "[read_file]")
+{
+    initialise_easyMock();
+    SECTION("Simple read")
+    {
+        CHECK(test_simple_fifo_read_simple_read() == 0);
+        check_easyMock();
+    }
+    SECTION("Double read")
+    {
+        CHECK(test_simple_fifo_read_double_read() == 0);
+        check_easyMock();
+    }
+    SECTION("Empty fifo")
+    {
+        CHECK(test_simple_fifo_read_empty_fifo() == 0);
+        check_easyMock();
+    }
+    SECTION("Wrap read")
+    {
+        CHECK(test_simple_fifo_read_wrap_read() == 0);
+        check_easyMock();
+    }
+    SECTION("Read request too big")
+    {
+        CHECK(test_simple_fifo_read_request_too_big() == 0);
+        check_easyMock();
+    }
+    SECTION("Copy to user fails")
+    {
+        CHECK(test_simple_fifo_read_copy_to_user_fails() == 0);
+        check_easyMock();
+    }
+}
+
 TEST_CASE("Exit module", "[exit_module]")
 {
     initialise_easyMock();

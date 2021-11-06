@@ -21,6 +21,13 @@ extern "C"
     int test_simple_fifo_write_fifo_full();
     int test_simple_fifo_write_fifo_partial_write();
 
+    int test_simple_fifo_read_simple_read();
+    int test_simple_fifo_read_double_read();
+    int test_simple_fifo_read_empty_fifo();
+    int test_simple_fifo_read_wrap_read();
+    int test_simple_fifo_read_request_too_big();
+    int test_simple_fifo_read_copy_to_user_fails();
+
     int test_exit_module();
 
 #ifdef __cplusplus
