@@ -21,15 +21,27 @@ MESSAGE(STATUS "Kernel module compile flag parameters : ${KERNEL_COMPILE_COMMAND
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/linux)
 
 add_custom_command(OUTPUT easyMock_cdev.c linux/cdev.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h --mock-only cdev_alloc --mock-only cdev_init --mock-only cdev_add --mock-only cdev_del --mock-only class_unregister ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h
+        --mock-only cdev_alloc
+        --mock-only cdev_init
+        --mock-only cdev_add
+        --mock-only cdev_del
+        --mock-only class_unregister
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_cdev.h linux/cdev.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h
         EasyMockGenerate
         )
 
+# Giving foobar to mock-only parameter makes sure that non of the function are mocked. As a results, only the macros
+# are generated
 add_custom_command(OUTPUT easyMock_module.c linux/module.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/module.h --mock-only foobar ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/module.h
+        --mock-only foobar
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_module.h linux/module.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/module.h
@@ -37,7 +49,10 @@ add_custom_command(OUTPUT easyMock_module.c linux/module.h
         )
 
 add_custom_command(OUTPUT easyMock_kernel.c linux/kernel.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/kernel.h --mock-only printk ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/kernel.h
+        --mock-only printk
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_kernel.h linux/kernel.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/kernel.h
@@ -46,7 +61,13 @@ add_custom_command(OUTPUT easyMock_kernel.c linux/kernel.h
         )
 
 add_custom_command(OUTPUT easyMock_fs.c linux/fs.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/fs.h --mock-only register_chrdev_region --mock-only alloc_chrdev_region --mock-only register_chrdev --mock-only unregister_chrdev_region ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/fs.h
+        --mock-only register_chrdev_region
+        --mock-only alloc_chrdev_region
+        --mock-only register_chrdev
+        --mock-only unregister_chrdev_region
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_fs.h linux/fs.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/fs.h
@@ -54,7 +75,16 @@ add_custom_command(OUTPUT easyMock_fs.c linux/fs.h
         )
 
 add_custom_command(OUTPUT easyMock_device.c linux/device.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/device.h --mock-only __class_create --mock-only device_create --mock-only device_destroy --mock-only class_unregister --mock-only class_destroy --generate-attribute format ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/device.h
+        --mock-only __class_create
+        --mock-only device_create
+        --mock-only device_destroy
+        --mock-only class_unregister
+        --mock-only class_destroy
+        --mock-only devm_kzalloc
+        --mock-only devm_kfree
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_device.h linux/device.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/device.h
@@ -62,7 +92,9 @@ add_custom_command(OUTPUT easyMock_device.c linux/device.h
         )
 
 add_custom_command(OUTPUT easyMock_types.c linux/types.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/types.h --generate-attribute format ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/types.h
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_types.h linux/types.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/types.h
@@ -70,10 +102,41 @@ add_custom_command(OUTPUT easyMock_types.c linux/types.h
         )
 
 add_custom_command(OUTPUT easyMock_uaccess.c linux/uaccess.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/uaccess.h --mock-only copy_from_user --mock-only copy_to_user --generate-attribute format ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/uaccess.h
+        --mock-only copy_from_user
+        --mock-only copy_to_user
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_uaccess.h linux/uaccess.h
         DEPENDS
         /lib/modules/${KERNEL_VERSION}/build/include/linux/uaccess.h
+        EasyMockGenerate
+        )
+
+add_custom_command(OUTPUT easyMock_list.c linux/list.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/list.h
+        --mock-only INIT_LIST_HEAD
+        --mock-only list_add
+        --mock-only list_del
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_list.h linux/list.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/list.h
+        EasyMockGenerate
+        )
+
+add_custom_command(OUTPUT easyMock_mutex.c linux/mutex.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/mutex.h
+        --mock-only __mutex_init
+        --mock-only mutex_add
+        --mock-only mutex_lock
+        --mock-only mutex_unlock
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_mutex.h linux/mutex.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/mutex.h
         EasyMockGenerate
         )
 
@@ -85,6 +148,8 @@ add_executable(testKernel
         easyMock_device.c
         easyMock_types.c
         easyMock_uaccess.c
+        easyMock_list.c
+        easyMock_mutex.c
         module_tests.c
         main.cpp
         )

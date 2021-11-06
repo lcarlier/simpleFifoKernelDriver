@@ -31,22 +31,22 @@ TEST_CASE("Init module", "[init_module]")
         CHECK(test_init_module_no_errors() == 0);
         check_easyMock();
     }
-    SECTION("alloc_chrdev_region fails")
+    SECTION("Alloc_chrdev_region fails")
     {
         CHECK(test_init_module_alloc_chrdev_region_fail() == 0);
         check_easyMock();
     }
-    SECTION("lass_create fails")
+    SECTION("Class_create fails")
     {
         CHECK(test_init_module_class_create_fail() == 0);
         check_easyMock();
     }
-    SECTION("cdev_add fails")
+    SECTION("Cdev_add fails")
     {
         CHECK(test_init_module_cdev_add_fail() == 0);
         check_easyMock();
     }
-    SECTION("device_create fails")
+    SECTION("Device_create fails")
     {
         CHECK(test_init_module_device_create_fail() == 0);
         check_easyMock();
@@ -61,7 +61,13 @@ TEST_CASE("Open file", "[open]")
         CHECK(test_simple_fifo_open() == 0);
         check_easyMock();
     }
+    SECTION("Devm_kzalloc fails")
+    {
+        CHECK(test_simple_fifo_open_devm_kzalloc_fail() == 0);
+        check_easyMock();
+    }
 }
+
 
 TEST_CASE("Write file", "[write]")
 {
@@ -70,6 +76,15 @@ TEST_CASE("Write file", "[write]")
     {
         CHECK(test_simple_fifo_write_simple_write() == 0);
         check_easyMock();
+    }
+    SECTION("Simple write first of 2 files")
+    {
+        CHECK(test_simple_fifo_write_simple_write_two_files_write_first_file() == 0);
+        check_easyMock();
+    }
+    SECTION("Simple write second of 2 files")
+    {
+        CHECK(test_simple_fifo_write_simple_write_two_files_write_second_file() == 0);
     }
     SECTION("Wrapper write")
     {
@@ -81,7 +96,7 @@ TEST_CASE("Write file", "[write]")
         CHECK(test_simple_fifo_write_double_write() == 0);
         check_easyMock();
     }
-    SECTION("Write fails")
+    SECTION("Copy from user fails")
     {
         CHECK(test_simple_fifo_write_copy_from_user_fails() == 0);
         check_easyMock();
@@ -94,6 +109,36 @@ TEST_CASE("Write file", "[write]")
     SECTION("Partial write")
     {
         CHECK(test_simple_fifo_write_fifo_partial_write() == 0);
+        check_easyMock();
+    }
+    SECTION("Write first file but second is full")
+    {
+        CHECK(test_simple_fifo_write_fifo_write_first_file_second_is_full() == 0);
+        check_easyMock();
+    }
+    SECTION("Write first file but second is partial write")
+    {
+        CHECK(test_simple_fifo_write_fifo_write_first_file_second_is_partial_write() == 0);
+        check_easyMock();
+    }
+    SECTION("Write two files big data")
+    {
+        CHECK(test_simple_fifo_write_fifo_write_two_file_big_data() == 0);
+        check_easyMock();
+    }
+    SECTION("Write two files one is write only")
+    {
+        CHECK(test_simple_fifo_write_fifo_write_two_file_one_is_write_only() == 0);
+        check_easyMock();
+    }
+}
+
+TEST_CASE("Release file", "[release_file]")
+{
+    initialise_easyMock();
+    SECTION("Free private data")
+    {
+        CHECK(test_simple_fifo_release() == 0);
         check_easyMock();
     }
 }

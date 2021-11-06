@@ -1,1 +1,2 @@
+CFLAGS_MODULE=-Werror -Wall -Wextra -Wno-unused-parameter
 obj-m += simpleFifo.o

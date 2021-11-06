@@ -5,6 +5,8 @@
 #include <linux/device.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
+#include <linux/list.h>
+#include <linux/mutex.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Laurent Carlier <carlier.lau@gmail.com>");
@@ -12,18 +14,28 @@ MODULE_AUTHOR("Laurent Carlier <carlier.lau@gmail.com>");
 static int simple_fifo_open(struct inode* inode, struct file* file);
 static ssize_t simple_fifo_write(struct file* file, char const* buf, size_t size, loff_t* offset);
 static ssize_t simple_fifo_read(struct file* file, char* buf, size_t size, loff_t* offset);
+static int simple_fifo_release(struct inode* inode, struct file* file);
 
 static const struct file_operations simpleFifo_fops = {
         .owner      = THIS_MODULE,
         .open = &simple_fifo_open,
         .write = &simple_fifo_write,
-        .read = &simple_fifo_read
+        .read = &simple_fifo_read,
+        .release = &simple_fifo_release
 };
 
-#define MAX_FIFO_SIZE (64)
+#define MAX_FIFO_SIZE ((uint8_t)64)
 
 struct simpleFifo_device_data {
+    struct device *dev;
     struct cdev cdev;
+    struct mutex open_file_list_mutex;
+    struct list_head opened_file_list;
+};
+
+struct file_private_data {
+    struct simpleFifo_device_data* parent;
+    struct list_head file_entry;
     uint8_t data[MAX_FIFO_SIZE];
     uint8_t writeOffset;
     uint8_t readOffset;
@@ -38,7 +50,6 @@ static int __init simple_fifo_init(void)
 {
 	int err;
 	dev_t devNumber;
-    struct device* dev;
 
 	err = alloc_chrdev_region(&devNumber, 0, 1, "simpleFifo");
     if(err < 0)
@@ -62,15 +73,15 @@ static int __init simple_fifo_init(void)
         goto unregister_chrdev_region;
     }
 
-    dev = device_create(my_class, NULL, MKDEV(dev_major, 0), NULL, "simplefifo-%d", 0);
-    if(dev == NULL)
+    simpleFifo_data.dev = device_create(my_class, NULL, MKDEV(dev_major, 0), NULL, "simplefifo-%d", 0);
+    if(simpleFifo_data.dev == NULL)
     {
         goto cdev_del;
     }
 
-    simpleFifo_data.readOffset = 0;
-    simpleFifo_data.writeOffset = 0;
-    simpleFifo_data.size = 0;
+    mutex_init(&simpleFifo_data.open_file_list_mutex);
+    INIT_LIST_HEAD(&simpleFifo_data.opened_file_list);
+
     printk("Simple fifo registered\n");
 
 	return 0;
@@ -86,69 +97,120 @@ static int simple_fifo_open(struct inode* inode, struct file* file)
 {
     struct simpleFifo_device_data *data = container_of(inode->i_cdev, struct simpleFifo_device_data, cdev);
 
-    file->private_data = (void*)data;
-
+    struct file_private_data* fpd = devm_kzalloc(data->dev, sizeof(struct file_private_data), GFP_KERNEL);
+    if(fpd == NULL)
+    {
+        return -ENOMEM;
+    }
+    mutex_lock(&data->open_file_list_mutex);
+    INIT_LIST_HEAD(&fpd->file_entry);
+    list_add(&fpd->file_entry, &data->opened_file_list);
+    fpd->parent = data;
+    file->private_data = (void*)fpd;
+    fpd->readOffset = 0;
+    fpd->writeOffset = 0;
+    fpd->size = 0;
+    mutex_unlock(&data->open_file_list_mutex);
     return 0;
 }
 
 static ssize_t simple_fifo_write(struct file* file, char const* buf, size_t size, loff_t* offset)
 {
-    struct simpleFifo_device_data *data = (struct simpleFifo_device_data*)file->private_data;
-
     uint8_t dataFromUser[MAX_FIFO_SIZE];
     uint8_t idx;
-    uint8_t nbBytesToCopy;
-    if(data->size == MAX_FIFO_SIZE)
+    uint8_t nbBytesToCopy = min(size, ((size_t)MAX_FIFO_SIZE));
+    struct list_head* curListHead;
+    struct simpleFifo_device_data* parent;
+
+    struct file_private_data *writenFilePd = (struct file_private_data *) file->private_data;
+    int isWrittenFileWriteOnly = (file->f_flags & O_WRONLY) != 0;
+    parent = writenFilePd->parent;
+
+    mutex_lock(&parent->open_file_list_mutex);
+    list_for_each(curListHead, &parent->opened_file_list)
     {
-        return 0;
-    }
-    if(data->size + size > MAX_FIFO_SIZE)
-    {
-        nbBytesToCopy = MAX_FIFO_SIZE - data->size;
-    }
-    else
-    {
-        nbBytesToCopy = size;
+        struct file_private_data *curFpd = list_entry(curListHead, struct file_private_data, file_entry);
+        if (curFpd->size == MAX_FIFO_SIZE) {
+            mutex_unlock(&parent->open_file_list_mutex);
+            return 0;
+        }
+
+        if(curFpd->size + size > MAX_FIFO_SIZE)
+        {
+            uint8_t spaceRemaingInFifo = MAX_FIFO_SIZE - curFpd->size;
+            nbBytesToCopy = min(nbBytesToCopy, spaceRemaingInFifo);
+        }
+        else
+        {
+            nbBytesToCopy = min((size_t)nbBytesToCopy, size);
+        }
     }
 
     if(copy_from_user(&dataFromUser, buf, nbBytesToCopy))
     {
+        mutex_unlock(&parent->open_file_list_mutex);
         return -EFAULT;
     }
-    for(idx = 0; idx < nbBytesToCopy; idx++)
+    list_for_each(curListHead, &parent->opened_file_list)
     {
-        data->data[data->writeOffset] = dataFromUser[idx];
-        ++data->writeOffset;
-        data->writeOffset %= MAX_FIFO_SIZE;
+        struct file_private_data *curFpd = list_entry(curListHead, struct file_private_data, file_entry);
+        if(isWrittenFileWriteOnly && (curFpd == writenFilePd))
+        {
+            continue;
+        }
+        for(idx = 0; idx < nbBytesToCopy; idx++)
+        {
+            curFpd->data[curFpd->writeOffset] = dataFromUser[idx];
+            ++curFpd->writeOffset;
+            curFpd->writeOffset %= MAX_FIFO_SIZE;
+        }
+        curFpd->size += nbBytesToCopy;
     }
-    data->size += nbBytesToCopy;
+    mutex_unlock(&parent->open_file_list_mutex);
     return nbBytesToCopy;
 }
 
 static ssize_t simple_fifo_read(struct file* file, char* buf, size_t size, loff_t* offset)
 {
-    struct simpleFifo_device_data *data = (struct simpleFifo_device_data*)file->private_data;
+    struct file_private_data *fpd = (struct file_private_data*)file->private_data;
+    struct simpleFifo_device_data *parent = fpd->parent;
     uint8_t dataToUser[MAX_FIFO_SIZE];
     uint8_t idx;
 
-    if(data->size == 0)
+    mutex_lock(&parent->open_file_list_mutex);
+    if(fpd->size == 0)
     {
+        mutex_unlock(&parent->open_file_list_mutex);
         return 0;
     }
-    size = min((size_t)data->size, size);
+    size = min((size_t)fpd->size, size);
     for(idx = 0; idx < size; idx++)
     {
-        dataToUser[idx] = data->data[data->readOffset];
-        ++data->readOffset;
-        data->readOffset %= MAX_FIFO_SIZE;
+        dataToUser[idx] = fpd->data[fpd->readOffset];
+        ++fpd->readOffset;
+        fpd->readOffset %= MAX_FIFO_SIZE;
     }
     if(copy_to_user(buf, dataToUser, size))
     {
+        mutex_unlock(&parent->open_file_list_mutex);
         return -EFAULT;
     }
-    data->size -= idx;
+    fpd->size -= size;
+    mutex_unlock(&parent->open_file_list_mutex);
     return idx;
 }
+
+static int simple_fifo_release(struct inode* inode, struct file* file)
+{
+    struct file_private_data* fpd = (struct file_private_data*)file->private_data;
+    struct simpleFifo_device_data* parent = fpd->parent;
+
+    mutex_lock(&parent->open_file_list_mutex);
+    list_del(&fpd->file_entry);
+    devm_kfree(parent->dev, fpd);
+    mutex_unlock(&parent->open_file_list_mutex);
+    return 0;
+};
 
 static void __exit simple_fifo_exit(void)
 {
