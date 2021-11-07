@@ -232,6 +232,7 @@ int test_init_module_device_create_fail()
 
 int test_simple_fifo_open()
 {
+    // Test setup
     struct inode inode;
     struct file file = {0};
     struct simpleFifo_device_data data = {0};
@@ -244,16 +245,15 @@ int test_simple_fifo_open()
     pd.size = 0xde;
 
     devm_kzalloc_ExpectAndReturn(data.dev, sizeof(struct file_private_data), GFP_KERNEL, &pd, cmp_pointer, cmp_int, cmp_int);
-
     mutex_lock_ExpectAndReturn(&data.open_file_list_mutex, cmp_pointer);
-
     INIT_LIST_HEAD_ExpectAndReturn(&pd.file_entry, cmp_pointer);
-
     list_add_ExpectAndReturn(&pd.file_entry, &data.opened_file_list, cmp_pointer, cmp_pointer);
-
     mutex_unlock_ExpectAndReturn(&data.open_file_list_mutex, cmp_pointer);
 
+    // Call function to test
     int rv = simple_fifo_open(&inode, &file);
+
+    // Check results
     if(rv != 0)
     {
         easyMock_addError(easyMock_true, "simple_fifo_open didn't return 0");

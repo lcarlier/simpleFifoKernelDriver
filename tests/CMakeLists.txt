@@ -13,7 +13,7 @@ string(REPLACE "'''" "'" KERNEL_COMPILE_COMMAND_ARGS ${KERNEL_COMPILE_COMMAND_AR
 # Then transform to a list
 string(REPLACE " " ";" KERNEL_COMPILE_COMMAND_ARGS ${KERNEL_COMPILE_COMMAND_ARGS})
 
-#Finally prepend the common arguments
+# Finally prepend the common arguments
 set(KERNEL_COMPILE_COMMAND_ARGS --generate-types -o ${CMAKE_CURRENT_BINARY_DIR} --cwd /lib/modules/${KERNEL_VERSION}/build ${KERNEL_COMPILE_COMMAND_ARGS})
 
 MESSAGE(STATUS "Kernel module compile flag parameters : ${KERNEL_COMPILE_COMMAND_ARGS}")
