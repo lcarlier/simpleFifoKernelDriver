@@ -3,7 +3,11 @@
 This repository shows how it is possible to test a kernel module using
 [EasyMock](https://github.com/lcarlier/EasyMock/).
 
-The kernel module implements a very simple multi readers/writers fifo. This readme serves as a documentation
+The kernel module implements a very simple multi readers/writers fifo. 
+
+![Demo](img/demo.gif)
+
+This readme serves as a documentation
 on how unit tests are implemented to validate a Linux kernel driver.
 
 The first section goes over the general issues of unit testing a Linux kernel driver. The second section
