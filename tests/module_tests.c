@@ -2,7 +2,7 @@
 #define module_exit(initfn)
 #define __init
 #define __exit
-static struct module{} __this_module;
+static struct module __this_module;
 #define THIS_MODULE (&__this_module)
 /*
  * Including stdint before include simpleFifo.c makes sure that stdint types like uint8_t are available in
