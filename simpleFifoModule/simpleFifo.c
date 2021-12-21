@@ -7,6 +7,8 @@
 #include <linux/uaccess.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
+#include <linux/printk.h>
+#include <linux/device/class.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Laurent Carlier <carlier.lau@gmail.com>");

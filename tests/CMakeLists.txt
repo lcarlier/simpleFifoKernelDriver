@@ -19,6 +19,7 @@ set(KERNEL_COMPILE_COMMAND_ARGS --generate-types -o ${CMAKE_CURRENT_BINARY_DIR} 
 MESSAGE(STATUS "Kernel module compile flag parameters : ${KERNEL_COMPILE_COMMAND_ARGS}")
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/linux)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/linux/device)
 
 add_custom_command(OUTPUT easyMock_cdev.c linux/cdev.h
         COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h
@@ -26,7 +27,6 @@ add_custom_command(OUTPUT easyMock_cdev.c linux/cdev.h
         --mock-only cdev_init
         --mock-only cdev_add
         --mock-only cdev_del
-        --mock-only class_unregister
         --generate-attribute format
         ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_cdev.h linux/cdev.h
@@ -76,11 +76,8 @@ add_custom_command(OUTPUT easyMock_fs.c linux/fs.h
 
 add_custom_command(OUTPUT easyMock_device.c linux/device.h
         COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/device.h
-        --mock-only __class_create
         --mock-only device_create
         --mock-only device_destroy
-        --mock-only class_unregister
-        --mock-only class_destroy
         --mock-only devm_kzalloc
         --mock-only devm_kfree
         --generate-attribute format
@@ -140,6 +137,30 @@ add_custom_command(OUTPUT easyMock_mutex.c linux/mutex.h
         EasyMockGenerate
         )
 
+add_custom_command(OUTPUT easyMock_printk.c linux/printk.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/printk.h
+        --mock-only printk
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_printk.h linux/printk.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/printk.h
+        EasyMockGenerate
+        )
+
+add_custom_command(OUTPUT easyMock_class.c linux/device/class.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/device/class.h
+        --mock-only __class_create
+	--mock-only class_destroy
+        --mock-only class_unregister
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../../easyMock_class.h linux/device/class.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/device/class.h
+        EasyMockGenerate
+        )
+
 add_executable(testKernel
         easyMock_cdev.c
         easyMock_module.c
@@ -150,6 +171,8 @@ add_executable(testKernel
         easyMock_uaccess.c
         easyMock_list.c
         easyMock_mutex.c
+        easyMock_printk.c
+	easyMock_class.c
         module_tests.c
         main.cpp
         )
