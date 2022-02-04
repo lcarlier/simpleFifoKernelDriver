@@ -95,18 +95,13 @@ execute_process(COMMAND bash -c "make -n -C /lib/modules/${KERNEL_VERSION}/build
 # Finally prepend the common arguments
 set(KERNEL_COMPILE_COMMAND_ARGS --generate-types -o ${CMAKE_CURRENT_BINARY_DIR} --cwd /lib/modules/${KERNEL_VERSION}/build ${KERNEL_COMPILE_COMMAND_ARGS})
 
-add_custom_command(OUTPUT easyMock_cdev.c linux/cdev.h
-        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h
-        --mock-only cdev_alloc
-        --mock-only cdev_init
-        --mock-only cdev_add
-        --mock-only cdev_del
-        --mock-only class_unregister
+add_custom_command(OUTPUT easyMock_module.c linux/module.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/module.h
         --generate-attribute format
         ${KERNEL_COMPILE_COMMAND_ARGS}
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_cdev.h linux/cdev.h
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_module.h linux/module.h
         DEPENDS
-        /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h
+        /lib/modules/${KERNEL_VERSION}/build/include/linux/module.h
         EasyMockGenerate
         )
 ```
