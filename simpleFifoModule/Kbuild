@@ -1,2 +1,2 @@
-CFLAGS_MODULE=-Werror -Wall -Wextra -Wno-unused-parameter
+CFLAGS_MODULE=-Werror -Wall -Wextra -Wno-unused-parameter -Wno-type-limits
 obj-m += simpleFifo.o
