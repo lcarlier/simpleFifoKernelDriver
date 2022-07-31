@@ -98,7 +98,7 @@ int test_init_module_no_errors()
         __mutex_init_ExpectAndReturn(&simpleFifo_data.open_file_list_mutex, "&simpleFifo_data.open_file_list_mutex", NULL, cmp_pointer, cmp_str, NULL);
         INIT_LIST_HEAD_ExpectAndReturn(&simpleFifo_data.opened_file_list, cmp_pointer);
 
-        printk_ExpectAndReturn(NULL, 0, NULL);
+        _printk_ExpectAndReturn(NULL, 0, NULL);
 
     }
 
@@ -992,7 +992,7 @@ int test_exit_module()
     class_destroy_ExpectAndReturn(ptr_to_check, cmp_pointer);
 
     expect_unregister_chrdev_region();
-    printk_ExpectAndReturn(NULL, 0, NULL);
+    _printk_ExpectAndReturn(NULL, 0, NULL);
 
     simple_fifo_exit();
 
