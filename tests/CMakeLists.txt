@@ -1,5 +1,5 @@
 # Magic command to extract all the compile parameters given when compiling with clang
-execute_process(COMMAND bash -c "make -n -C /lib/modules/${KERNEL_VERSION}/build M=${PROJECT_SOURCE_DIR}/simpleFifoModule CC=clang-12 V=1 VERBOSE=1 modules | sed -n -e 's/^.*clang-12 \\(.*\\) -c -o.*$/\\1/p'"
+execute_process(COMMAND bash -c "make -n -C /lib/modules/${KERNEL_VERSION}/build M=${PROJECT_SOURCE_DIR}/simpleFifoModule CC=${CLANG_CMD} V=1 VERBOSE=1 modules | sed -n -e 's/^.*${CLANG_CMD} \\(.*\\) -c -o.*$/\\1/p'"
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/simpleFifoModule
         ERROR_QUIET
         COMMAND_ECHO STDOUT
@@ -20,6 +20,7 @@ MESSAGE(STATUS "Kernel module compile flag parameters : ${KERNEL_COMPILE_COMMAND
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/linux)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/linux/device)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/uapi/linux)
 
 add_custom_command(OUTPUT easyMock_cdev.c linux/cdev.h
         COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/linux/cdev.h
@@ -55,6 +56,7 @@ add_custom_command(OUTPUT easyMock_kernel.c linux/kernel.h
         --ignore-generation-of vsprintf
         --ignore-generation-of printf
         --ignore-generation-of snprintf
+        --ignore-generation-of vsnprintf
         --generate-attribute format
         ${KERNEL_COMPILE_COMMAND_ARGS}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ../easyMock_kernel.h linux/kernel.h
@@ -144,6 +146,16 @@ add_custom_command(OUTPUT easyMock_class.c linux/device/class.h
         /lib/modules/${KERNEL_VERSION}/build/include/linux/device/class.h
         EasyMockGenerate
         )
+add_custom_command(OUTPUT easyMock_version.c generated/uapi/linux/version.h
+        COMMAND EasyMockGenerate ARGS -i /lib/modules/${KERNEL_VERSION}/build/include/generated/uapi/linux/version.h
+        --generate-attribute format
+        ${KERNEL_COMPILE_COMMAND_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../../../easyMock_version.h generated/uapi/linux/version.h
+        DEPENDS
+        /lib/modules/${KERNEL_VERSION}/build/include/generated/uapi/linux/version.h
+        EasyMockGenerate
+        )
+
 
 add_executable(testKernel
         easyMock_cdev.c
@@ -157,6 +169,7 @@ add_executable(testKernel
         easyMock_mutex.c
         easyMock_printk.c
         easyMock_class.c
+        easyMock_version.c
         module_tests.c
         main.cpp
         )

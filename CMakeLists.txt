@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.10)
 project (SimpleFifoDevice)
 
+set(CLANG_CMD "clang-12" CACHE STRING "The clang command to use to fetch the compile flag parameters")
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
 

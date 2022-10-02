@@ -10,6 +10,9 @@ static struct module __this_module;
  * this files will not generate the stdint types because no function parameter or return type is actually using those.
  */
 #include <stdint.h>
+
+#include "generated/uapi/linux/version.h"
+
 #include "../simpleFifoModule/simpleFifo.c"
 
 #include <easyMock.h>
@@ -18,6 +21,8 @@ static struct module __this_module;
 #include <string.h>
 
 static dev_t major_minor_to_test = MKDEV(42, 0);
+#define DO_NOT_FAIL (0)
+#define DO_FAIL (1)
 
 static int cmp_not_null_pointer(const void *currentCall_ptr, const void *not_used, const char *paramName,
                        char *errorMessage) {
@@ -239,7 +244,7 @@ int test_simple_fifo_open()
 
     inode.i_cdev = &data.cdev;
 
-    struct file_private_data pd;
+    struct file_private_data pd = {0};
     pd.writeOffset = 0xca;
     pd.readOffset = 0xfe;
     pd.size = 0xde;
@@ -342,33 +347,40 @@ static void _test_list_add(struct list_head *new,
     prev->next = new;
 }
 
-static void test_list_add(struct list_head *new, struct list_head *head)
+static void test_list_add_tail(struct list_head *new, struct list_head *head)
 {
-    _test_list_add(new, head, head->next);
+    _test_list_add(new, head->next, head);
+}
+
+static void prepare_for_each_files(unsigned int nb_files, unsigned int last_fail)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,46)
+    for(unsigned int file_idx = 0; file_idx < nb_files; ++file_idx)
+    {
+        list_is_head_ExpectAndReturn(NULL, NULL, 0, NULL, NULL);
+    }
+    if(!last_fail)
+    {
+        list_is_head_ExpectAndReturn(NULL, NULL, 1, NULL, NULL);
+    }
+#endif
 }
 
 static void prepare_one_file(struct simpleFifo_device_data* dev_data, struct file* file, struct file_private_data* fpd)
 {
     test_INIT_LIST_HEAD(&dev_data->opened_file_list);
-    memset(fpd, 0, sizeof(struct file_private_data));
     fpd->parent = dev_data;
-    test_list_add(&fpd->file_entry, &dev_data->opened_file_list);
+    test_list_add_tail(&fpd->file_entry, &dev_data->opened_file_list);
     file->private_data = (void*)fpd;
 }
 
 static void prepare_write_two_file(struct simpleFifo_device_data* dev_data, struct file_private_data* fpd)
 {
-
     test_INIT_LIST_HEAD(&dev_data->opened_file_list);
     for(uint8_t idx = 0; idx < 2; ++idx)
     {
-        memset(&fpd[idx], 0, sizeof(struct file_private_data));
         fpd[idx].parent = dev_data;
-        fpd[idx].size = 0;
-        fpd[idx].readOffset = 0;
-        fpd[idx].writeOffset = 0;
-        test_INIT_LIST_HEAD(&fpd[idx].file_entry);
-        test_list_add(&fpd[idx].file_entry, &dev_data->opened_file_list);
+        test_list_add_tail(&fpd[idx].file_entry, &dev_data->opened_file_list);
     }
 }
 
@@ -376,16 +388,16 @@ int test_simple_fifo_write_simple_write()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
     char buf[MAX_FIFO_SIZE] = "simple char";
     ssize_t len = strlen(buf);
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
-
+    prepare_for_each_files(1, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, len, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, len);
-
+    prepare_for_each_files(1, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -400,7 +412,7 @@ int test_simple_fifo_write_simple_write()
 static int test_write_file(int n)
 {
     struct simpleFifo_device_data dev_data;
-    struct file_private_data fpd[2];
+    struct file_private_data fpd[2] = {{0}, {0}};
     prepare_write_two_file(&dev_data, fpd);
 
     struct file file = {0};
@@ -410,9 +422,9 @@ static int test_write_file(int n)
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
-
+    prepare_for_each_files(2, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, len, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, len);
-
+    prepare_for_each_files(2, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -441,7 +453,7 @@ int test_simple_fifo_write_wrapper_write()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     fpd.writeOffset = MAX_FIFO_SIZE - 4;
@@ -451,9 +463,9 @@ int test_simple_fifo_write_wrapper_write()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
-
+    prepare_for_each_files(1, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, &buf, len, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, &buf, len);
-
+    prepare_for_each_files(1, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -482,7 +494,7 @@ int test_simple_fifo_write_double_write()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     char buf[MAX_FIFO_SIZE] = "simple char";
@@ -490,11 +502,15 @@ int test_simple_fifo_write_double_write()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(1, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, len, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, len);
+    prepare_for_each_files(1, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(1, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, len, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, len);
+    prepare_for_each_files(1, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -516,7 +532,7 @@ int test_simple_fifo_write_copy_from_user_fails()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     fpd.writeOffset = MAX_FIFO_SIZE - 4;
@@ -527,7 +543,7 @@ int test_simple_fifo_write_copy_from_user_fails()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
-
+    prepare_for_each_files(1, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, &buf, len, 1, cmp_not_null_pointer, cmp_pointer, cmp_long, &buf, len);
 
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
@@ -545,7 +561,7 @@ int test_simple_fifo_write_fifo_full()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     fpd.writeOffset = MAX_FIFO_SIZE - 1;
@@ -556,6 +572,7 @@ int test_simple_fifo_write_fifo_full()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(1, DO_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -571,7 +588,7 @@ int test_simple_fifo_write_fifo_partial_write()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     fpd.writeOffset = 10;
@@ -583,11 +600,14 @@ int test_simple_fifo_write_fifo_partial_write()
 
     // First write
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(1, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, 4, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, 4);
+    prepare_for_each_files(1, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     // Second write
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(1, DO_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -612,7 +632,7 @@ int test_simple_fifo_write_fifo_partial_write()
 int test_simple_fifo_write_fifo_write_first_file_second_is_full()
 {
     struct simpleFifo_device_data dev_data;
-    struct file_private_data fpd[2];
+    struct file_private_data fpd[2] = {{0}, {0}};
     prepare_write_two_file(&dev_data, fpd);
 
     // Write first file
@@ -629,6 +649,7 @@ int test_simple_fifo_write_fifo_write_first_file_second_is_full()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(2, DO_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -649,7 +670,7 @@ int test_simple_fifo_write_fifo_write_first_file_second_is_full()
 int test_simple_fifo_write_fifo_write_first_file_second_is_partial_write()
 {
     struct simpleFifo_device_data dev_data;
-    struct file_private_data fpd[2];
+    struct file_private_data fpd[2] = {{0}, {0}};
     prepare_write_two_file(&dev_data, fpd);
 
     // Write first file
@@ -666,11 +687,14 @@ int test_simple_fifo_write_fifo_write_first_file_second_is_partial_write()
 
     // First write
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(2, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, 4, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, 4);
+    prepare_for_each_files(2, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     // Second write
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(2, DO_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -703,7 +727,7 @@ int test_simple_fifo_write_fifo_write_first_file_second_is_partial_write()
 int test_simple_fifo_write_fifo_write_two_file_big_data()
 {
     struct simpleFifo_device_data dev_data;
-    struct file_private_data fpd[2];
+    struct file_private_data fpd[2] = {{0}, {0}};
     prepare_write_two_file(&dev_data, fpd);
 
     // Write first file
@@ -715,7 +739,9 @@ int test_simple_fifo_write_fifo_write_two_file_big_data()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
+    prepare_for_each_files(2, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, MAX_FIFO_SIZE, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, MAX_FIFO_SIZE);
+    prepare_for_each_files(2, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -730,7 +756,7 @@ int test_simple_fifo_write_fifo_write_two_file_big_data()
 int test_simple_fifo_write_fifo_write_two_file_one_is_write_only()
 {
     struct simpleFifo_device_data dev_data;
-    struct file_private_data fpd[2];
+    struct file_private_data fpd[2] = {{0}, {0}};
     prepare_write_two_file(&dev_data, fpd);
 
     struct file file = {0};
@@ -741,9 +767,9 @@ int test_simple_fifo_write_fifo_write_two_file_one_is_write_only()
     loff_t offset;
 
     mutex_lock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
-
+    prepare_for_each_files(2, DO_NOT_FAIL);
     copy_from_user_ExpectReturnAndOutput(NULL, buf, len, 0, cmp_not_null_pointer, cmp_pointer, cmp_long, buf, len);
-
+    prepare_for_each_files(2, DO_NOT_FAIL);
     mutex_unlock_ExpectAndReturn(&dev_data.open_file_list_mutex, cmp_pointer);
 
     ssize_t rv = simple_fifo_write(&file, buf, len, &offset);
@@ -762,7 +788,7 @@ int test_simple_fifo_read_simple_read()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     char bufToReturn[] = "simple char";
@@ -792,7 +818,7 @@ int test_simple_fifo_read_double_read()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     char firstBufToReturn[] = "simple char";
@@ -833,7 +859,7 @@ int test_simple_fifo_read_empty_fifo()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     char buf = '\0';
@@ -868,7 +894,7 @@ int test_simple_fifo_read_wrap_read()
     dataBuf[ 7] = '\0';
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     memcpy(fpd.data, dataBuf, MAX_FIFO_SIZE);
@@ -899,7 +925,7 @@ int test_simple_fifo_read_request_too_big()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
 
     char bufToReturn[] = "simple char";
@@ -930,7 +956,7 @@ int test_simple_fifo_read_copy_to_user_fails()
 {
     struct simpleFifo_device_data dev_data;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
     prepare_one_file(&dev_data, &file, &fpd);
     char bufToReturn[] = "simple char";
     ssize_t len = strlen(bufToReturn) + 1;
@@ -960,7 +986,7 @@ int test_simple_fifo_release()
     struct inode inode;
     struct simpleFifo_device_data parent;
     struct file file = {0};
-    struct file_private_data fpd;
+    struct file_private_data fpd = {0};
 
     fpd.parent = &parent;
 

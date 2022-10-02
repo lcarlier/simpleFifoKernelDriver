@@ -6,6 +6,15 @@ on:
   schedule:
     - cron: '0 0 * * *'
 
+  workflow_dispatch:
+    inputs:
+      tmate_enabled:
+        description: 'Run the build with tmate debugging session enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        type: boolean
+        default: false
+
+
 jobs:
   validate-kernel-module:
     runs-on: ubuntu-20.04
@@ -13,30 +22,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      # Enable tmate debugging of manually-triggered workflows if the input option was provided
+      - name: Setup tmate session if enabled
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tmate_enabled == 'true' }}
+
       - name: Run test
         run:  |-
-          sudo apt install \
-            gcc \
-            g++ \
-            cmake \
-            pkg-config \
-            libunwind-dev \
-            llvm-12-dev \
-            libclang-12-dev \
-            libncurses-dev \
-            libboost-system-dev \
-            libboost-filesystem-dev \
-            libctemplate-dev \
-            libdw-dev \
-            doxygen \
-            graphviz
-          git submodule init
-          git submodule update
-          cmake -B build
-          cd build
-          make -j`nproc` all
-          ctest --output-on-failure
+          ./ci/validate.sh
         shell: bash
+
 
       - name: Store artifacts
         if: always()
