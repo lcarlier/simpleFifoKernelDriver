@@ -9,6 +9,7 @@
 #include <linux/mutex.h>
 #include <linux/printk.h>
 #include <linux/device/class.h>
+#include <linux/version.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Laurent Carlier <carlier.lau@gmail.com>");
@@ -61,7 +62,11 @@ static int __init simple_fifo_init(void)
 
 	dev_major = MAJOR(devNumber);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,4,0)
 	my_class = class_create(THIS_MODULE, "simpleFifo");
+#else
+	my_class = class_create("simpleFifo");
+#endif
     if(my_class == NULL)
     {
         goto unregister_chrdev_region;
